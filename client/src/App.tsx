@@ -8,8 +8,9 @@ import Dashboard from "./pages/Dashboard";
 import CallDetection from "./pages/CallDetection";
 import SmsDetection from "./pages/SmsDetection";
 import EmailDetection from "./pages/EmailDetection";
+import Profile from "./pages/Profile";
 import { Button } from "./components/ui/button";
-import { Phone, MessageSquare, Mail, Home as HomeIcon } from "lucide-react";
+import { Phone, MessageSquare, Mail, Home as HomeIcon, Settings } from "lucide-react";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/calls" component={CallDetection} />
       <Route path="/sms" component={SmsDetection} />
       <Route path="/emails" component={EmailDetection} />
+      <Route path="/profile" component={Profile} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -72,6 +74,17 @@ function BottomNav() {
       >
         <Mail className="w-5 h-5" />
         <span className="text-xs">Emails</span>
+      </Button>
+      <Button
+        onClick={() => setLocation("/profile")}
+        className={`flex-1 flex flex-col items-center gap-1 h-16 rounded-none ${
+          location === "/profile"
+            ? "bg-slate-800 text-lime-400"
+            : "bg-transparent text-gray-400 hover:bg-slate-800"
+        }`}
+      >
+        <Settings className="w-5 h-5" />
+        <span className="text-xs">Profile</span>
       </Button>
     </div>
   );
