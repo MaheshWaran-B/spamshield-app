@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, callScans, smsScans, emailScans, userStats } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,133 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+/**
+ * CALL SCAN QUERIES
+ */
+export async function createCallScan(scan: {
+  userId: number;
+  phoneNumberHash: string;
+  riskScore: number;
+  verdict: "spam" | "safe" | "warning";
+  reportCount?: number;
+  aiReasoning?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(callScans).values(scan);
+  return result;
+}
+
+export async function getCallScans(userId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return db
+    .select()
+    .from(callScans)
+    .where(eq(callScans.userId, userId))
+    .orderBy(desc(callScans.createdAt))
+    .limit(limit);
+}
+
+/**
+ * SMS SCAN QUERIES
+ */
+export async function createSmsScan(scan: {
+  userId: number;
+  messageText: string;
+  messageHash: string;
+  riskScore: number;
+  verdict: "spam" | "safe" | "warning";
+  spamKeywords?: string;
+  aiReasoning?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return db.insert(smsScans).values(scan);
+}
+
+export async function getSmsScans(userId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return db
+    .select()
+    .from(smsScans)
+    .where(eq(smsScans.userId, userId))
+    .orderBy(desc(smsScans.createdAt))
+    .limit(limit);
+}
+
+/**
+ * EMAIL SCAN QUERIES
+ */
+export async function createEmailScan(scan: {
+  userId: number;
+  senderEmail: string;
+  subject: string;
+  bodyHash: string;
+  category: "inbox" | "promotions" | "spam" | "phishing";
+  confidenceScore: number;
+  threatLevel: "safe" | "warning" | "critical";
+  aiReasoning?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return db.insert(emailScans).values(scan);
+}
+
+export async function getEmailScans(userId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return db
+    .select()
+    .from(emailScans)
+    .where(eq(emailScans.userId, userId))
+    .orderBy(desc(emailScans.createdAt))
+    .limit(limit);
+}
+
+/**
+ * USER STATS QUERIES
+ */
+export async function getOrCreateUserStats(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const existing = await db
+    .select()
+    .from(userStats)
+    .where(eq(userStats.userId, userId))
+    .limit(1);
+  
+  if (existing.length > 0) return existing[0];
+  
+  await db.insert(userStats).values({ userId });
+  return db
+    .select()
+    .from(userStats)
+    .where(eq(userStats.userId, userId))
+    .limit(1)
+    .then(r => r[0]);
+}
+
+export async function updateUserStats(userId: number, updates: Partial<{
+  totalScanned: number;
+  spamBlocked: number;
+  safeCount: number;
+  warningCount: number;
+  overallSafetyScore: number;
+}>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return db
+    .update(userStats)
+    .set(updates)
+    .where(eq(userStats.userId, userId));
+}
