@@ -7,6 +7,9 @@ import {
   getSmsScans,
   createEmailScan,
   getEmailScans,
+  getUserByUsername,
+  createUser,
+  updateLastSignedIn,
 } from "./db";
 import {
   hashPhoneNumber,
@@ -16,6 +19,7 @@ import {
   isValidEmail,
   sanitizeInput,
 } from "./security";
+import { hashPassword, verifyPassword, isValidUsername, isValidPassword } from "./auth";
 import { analyzeCallSpam, analyzeSmsSpam, analyzeEmailSpam } from "./aiAnalysis";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -25,6 +29,81 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
+    
+    signup: publicProcedure
+      .input(z.object({
+        username: z.string().min(3).max(64),
+        password: z.string().min(8),
+      }))
+      .mutation(async ({ input }) => {
+        if (!isValidUsername(input.username)) {
+          throw new Error("Invalid username format");
+        }
+        if (!isValidPassword(input.password)) {
+          throw new Error("Password must be at least 8 characters");
+        }
+
+        const existingUser = await getUserByUsername(input.username);
+        if (existingUser) {
+          throw new Error("Username already exists");
+        }
+
+        const passwordHash = hashPassword(input.password);
+        await createUser({
+          username: input.username,
+          passwordHash,
+        });
+
+        return {
+          success: true,
+          message: "Account created successfully",
+        };
+      }),
+
+    login: publicProcedure
+      .input(z.object({
+        username: z.string(),
+        password: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = await getUserByUsername(input.username);
+        if (!user) {
+          throw new Error("Invalid username or password");
+        }
+
+        if (!user.passwordHash) {
+          throw new Error("This account uses OAuth login. Please use OAuth to sign in.");
+        }
+
+        if (!verifyPassword(input.password, user.passwordHash)) {
+          throw new Error("Invalid username or password");
+        }
+
+        await updateLastSignedIn(user.id);
+
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        const sessionData = JSON.stringify({
+          userId: user.id,
+          username: user.username,
+          role: user.role,
+        });
+
+        ctx.res.setHeader("Set-Cookie", `${COOKIE_NAME}=${Buffer.from(sessionData).toString("base64")}; ${Object.entries(cookieOptions)
+          .map(([key, val]) => `${key}=${val}`)
+          .join("; ")}`);
+
+        return {
+          success: true,
+          user: {
+            id: user.id,
+            username: user.username,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+          },
+        };
+      }),
+
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -33,7 +112,6 @@ export const appRouter = router({
       } as const;
     }),
   }),
-
   calls: router({
     scan: protectedProcedure
       .input(z.object({ phoneNumber: z.string().min(10).max(15) }))

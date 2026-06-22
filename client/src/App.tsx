@@ -9,10 +9,39 @@ import CallDetection from "./pages/CallDetection";
 import SmsDetection from "./pages/SmsDetection";
 import EmailDetection from "./pages/EmailDetection";
 import Profile from "./pages/Profile";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import { Button } from "./components/ui/button";
 import { Phone, MessageSquare, Mail, Home as HomeIcon, Settings } from "lucide-react";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 function Router() {
+  const { isAuthenticated, loading } = useAuth();
+  const [, setLocation] = useLocation();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lime-400 mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <Switch>
+        <Route path="/login" component={Login} />
+        <Route path="/signup" component={Signup} />
+        <Route component={Login} />
+      </Switch>
+    );
+  }
+
+  // Show authenticated routes
   return (
     <Switch>
       <Route path={"/"} component={Dashboard} />
@@ -28,6 +57,12 @@ function Router() {
 
 function BottomNav() {
   const [location, setLocation] = useLocation();
+  const { isAuthenticated } = useAuth();
+
+  // Don't show bottom nav on login/signup pages or if not authenticated
+  if (!isAuthenticated || location === "/login" || location === "/signup") {
+    return null;
+  }
 
   return (
     <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto bg-slate-900 border-t border-slate-700 flex items-center justify-around">
@@ -89,11 +124,6 @@ function BottomNav() {
     </div>
   );
 }
-
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
 
 function App() {
   return (

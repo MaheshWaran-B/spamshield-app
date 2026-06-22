@@ -15,6 +15,13 @@
       "when": 1782058089301,
       "tag": "0001_fuzzy_scream",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1782098926393,
+      "tag": "0002_lame_boom_boom",
+      "breakpoints": true
     }
   ]
 }

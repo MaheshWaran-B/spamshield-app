@@ -62,3 +62,15 @@
 - [x] Security audit (rate limiting, input validation implemented)
 - [x] Performance testing (LLM response times acceptable)
 - [x] Final checkpoint and deployment ready
+
+## Custom Username/Password Authentication
+- [x] Database schema update (username, passwordHash fields)
+- [x] Password hashing with PBKDF2 (100,000 iterations)
+- [x] Signup page with validation (username 3-64 chars, password 8+ chars)
+- [x] Login page with credentials verification
+- [x] auth.signup tRPC procedure
+- [x] auth.login tRPC procedure with session creation
+- [x] Route protection (redirect unauthenticated to /login)
+- [x] Session persistence (cookie-based)
+- [x] Bottom nav hidden on login/signup pages
+- [x] All 30 tests passing (routers, AI analysis, auth)

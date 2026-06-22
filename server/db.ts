@@ -219,3 +219,66 @@ export async function updateUserStats(userId: number, updates: Partial<{
     .set(updates)
     .where(eq(userStats.userId, userId));
 }
+
+/**
+ * Get user by username (for custom auth)
+ */
+export async function getUserByUsername(username: string) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get user: database not available");
+    return undefined;
+  }
+
+  const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
+
+  return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Create new user with username and password
+ */
+export async function createUser(data: {
+  username: string;
+  passwordHash: string;
+  name?: string;
+  email?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  try {
+    await db.insert(users).values({
+      username: data.username,
+      passwordHash: data.passwordHash,
+      name: data.name,
+      email: data.email,
+      loginMethod: "custom",
+      role: "user",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastSignedIn: new Date(),
+    });
+    
+    // Return the created user
+    return getUserByUsername(data.username);
+  } catch (error: any) {
+    if (error.message?.includes("Duplicate entry")) {
+      throw new Error("Username already exists");
+    }
+    throw error;
+  }
+}
+
+/**
+ * Update last signed in timestamp
+ */
+export async function updateLastSignedIn(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db
+    .update(users)
+    .set({ lastSignedIn: new Date() })
+    .where(eq(users.id, userId));
+}
